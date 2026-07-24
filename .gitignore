@@ -1,0 +1,22 @@
+# Node / React
+node_modules/
+frontend/dist/
+frontend/build/
+
+# Python
+__pycache__/
+*.pyc
+backend/venv/
+backend/env/
+
+# Environment variables (secrets)
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
