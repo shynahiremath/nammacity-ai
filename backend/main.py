@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from database import database
 from models import UserSignup, UserLogin
-from auth import hash_password, verify_password
+from auth import hash_password, verify_password, create_access_token
 
 app = FastAPI()
 
@@ -37,4 +37,22 @@ async def signup(user: UserSignup):
     return {
         "message": "User created successfully",
         "user_id": str(result.inserted_id)
+    }
+
+@app.post("/login")
+async def login(user: UserLogin):
+    db_user = await database.users.find_one({"email": user.email})
+
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not verify_password(user.password, db_user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    token = create_access_token({"sub": db_user["email"]})
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "name": db_user["name"]
     }
