@@ -16,6 +16,8 @@ const intensityMap = {
   low: 0.3,
 }
 
+const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
 function createColoredIcon(color) {
   return L.divIcon({
     className: 'custom-marker',
@@ -62,6 +64,122 @@ function HeatmapLayer({ zones }) {
   return null
 }
 
+function PredictionPanel({ zones }) {
+  const [selectedZone, setSelectedZone] = useState('')
+  const [selectedDay, setSelectedDay] = useState(0)
+  const [selectedHour, setSelectedHour] = useState(9)
+  const [prediction, setPrediction] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (zones.length > 0 && !selectedZone) {
+      setSelectedZone(zones[0].name)
+    }
+  }, [zones, selectedZone])
+
+  async function handlePredict() {
+    setLoading(true)
+    setError('')
+    setPrediction(null)
+
+    try {
+      const response = await axios.get('http://127.0.0.1:8000/predict', {
+        params: {
+          zone: selectedZone,
+          day_of_week: selectedDay,
+          hour: selectedHour,
+        },
+      })
+      setPrediction(response.data)
+    } catch (err) {
+      setError('Could not get prediction. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <h3 className="text-lg font-semibold mb-4">AI Congestion Predictor</h3>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Zone</label>
+          <select
+            value={selectedZone}
+            onChange={(e) => setSelectedZone(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+          >
+            {zones.map((zone) => (
+              <option key={zone.id} value={zone.name}>
+                {zone.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Day</label>
+          <select
+            value={selectedDay}
+            onChange={(e) => setSelectedDay(Number(e.target.value))}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+          >
+            {dayNames.map((day, index) => (
+              <option key={index} value={index}>
+                {day}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Hour (24h)</label>
+          <select
+            value={selectedHour}
+            onChange={(e) => setSelectedHour(Number(e.target.value))}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+          >
+            {Array.from({ length: 24 }, (_, i) => (
+              <option key={i} value={i}>
+                {i}:00
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <button
+        onClick={handlePredict}
+        disabled={loading || !selectedZone}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition disabled:opacity-50"
+      >
+        {loading ? 'Predicting...' : 'Predict Congestion'}
+      </button>
+
+      {error && <p className="text-red-600 mt-4">{error}</p>}
+
+      {prediction && (
+        <div className="mt-4 p-4 rounded bg-gray-50 flex items-center gap-4">
+          <span
+            className="w-4 h-4 rounded-full inline-block"
+            style={{ backgroundColor: colorMap[prediction.predicted_level] }}
+          ></span>
+          <div>
+            <p className="font-semibold capitalize">
+              {prediction.predicted_level} congestion expected
+            </p>
+            <p className="text-sm text-gray-500">
+              Confidence: {(prediction.confidence * 100).toFixed(0)}%
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MapView() {
   const bangaloreCenter = [12.9716, 77.5946]
   const [zones, setZones] = useState([])
@@ -89,6 +207,8 @@ function MapView() {
 
       {loading && <p className="text-gray-500 mb-4">Loading traffic zones...</p>}
       {error && <p className="text-red-600 mb-4">{error}</p>}
+
+      {!loading && zones.length > 0 && <PredictionPanel zones={zones} />}
 
       <div className="rounded-lg overflow-hidden shadow" style={{ height: '500px' }}>
         <MapContainer
