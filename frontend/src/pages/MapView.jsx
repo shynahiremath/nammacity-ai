@@ -1,18 +1,19 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { useEffect, useRef, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
-
-const trafficZones = [
-  { id: 1, name: 'MG Road', position: [12.9758, 77.6045], level: 'high' },
-  { id: 2, name: 'Whitefield', position: [12.9698, 77.7500], level: 'medium' },
-  { id: 3, name: 'Koramangala', position: [12.9352, 77.6245], level: 'low' },
-  { id: 4, name: 'Electronic City', position: [12.8452, 77.6602], level: 'high' },
-  { id: 5, name: 'Indiranagar', position: [12.9719, 77.6412], level: 'medium' },
-]
+import 'leaflet.heat'
+import axios from 'axios'
 
 const colorMap = {
   high: 'red',
   medium: 'orange',
   low: 'green',
+}
+
+const intensityMap = {
+  high: 1.0,
+  medium: 0.6,
+  low: 0.3,
 }
 
 function createColoredIcon(color) {
@@ -24,12 +25,70 @@ function createColoredIcon(color) {
   })
 }
 
+function HeatmapLayer({ zones }) {
+  const map = useMap()
+  const heatLayerRef = useRef(null)
+
+  useEffect(() => {
+    if (zones.length === 0) return
+
+    const heatPoints = zones.map((zone) => [
+      zone.latitude,
+      zone.longitude,
+      intensityMap[zone.level],
+    ])
+
+    map.whenReady(() => {
+      heatLayerRef.current = L.heatLayer(heatPoints, {
+        radius: 45,
+        blur: 35,
+        maxZoom: 15,
+        max: 1.0,
+        minOpacity: 0.4,
+      }).addTo(map)
+
+      setTimeout(() => {
+        map.invalidateSize()
+      }, 100)
+    })
+
+    return () => {
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current)
+      }
+    }
+  }, [map, zones])
+
+  return null
+}
+
 function MapView() {
   const bangaloreCenter = [12.9716, 77.5946]
+  const [zones, setZones] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    async function fetchZones() {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/traffic-zones')
+        setZones(response.data)
+      } catch (err) {
+        setError('Failed to load traffic zones')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchZones()
+  }, [])
 
   return (
     <div className="p-8">
       <h2 className="text-2xl font-semibold mb-4">Interactive City Map</h2>
+
+      {loading && <p className="text-gray-500 mb-4">Loading traffic zones...</p>}
+      {error && <p className="text-red-600 mb-4">{error}</p>}
 
       <div className="rounded-lg overflow-hidden shadow" style={{ height: '500px' }}>
         <MapContainer
@@ -42,10 +101,12 @@ function MapView() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
 
-          {trafficZones.map((zone) => (
+          <HeatmapLayer zones={zones} />
+
+          {zones.map((zone) => (
             <Marker
               key={zone.id}
-              position={zone.position}
+              position={[zone.latitude, zone.longitude]}
               icon={createColoredIcon(colorMap[zone.level])}
             >
               <Popup>
