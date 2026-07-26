@@ -8,3 +8,9 @@ class UserSignup(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+class TrafficZone(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+    level: str

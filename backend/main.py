@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import database
-from models import UserSignup, UserLogin
+from models import UserSignup, UserLogin, TrafficZone
 from auth import hash_password, verify_password, create_access_token
+from ml_predictor import predict_congestion
 
 app = FastAPI()
 
@@ -65,3 +66,31 @@ async def login(user: UserLogin):
         "token_type": "bearer",
         "name": db_user["name"]
     }
+
+@app.get("/traffic-zones")
+async def get_traffic_zones():
+    zones = []
+    cursor = database.traffic_zones.find()
+    async for zone in cursor:
+        zones.append({
+            "id": str(zone["_id"]),
+            "name": zone["name"],
+            "latitude": zone["latitude"],
+            "longitude": zone["longitude"],
+            "level": zone["level"],
+        })
+    return zones
+
+@app.post("/traffic-zones")
+async def create_traffic_zone(zone: TrafficZone):
+    new_zone = zone.dict()
+    result = await database.traffic_zones.insert_one(new_zone)
+    return {"message": "Zone created", "id": str(result.inserted_id)}
+
+@app.get("/predict")
+async def predict(zone: str, day_of_week: int, hour: int):
+    try:
+        result = predict_congestion(zone, day_of_week, hour)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
