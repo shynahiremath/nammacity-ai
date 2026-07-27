@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import MapView from './pages/MapView'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import CityView3D from './pages/CityView3D'
 
 function App() {
   return (
@@ -27,6 +28,14 @@ function App() {
           element={
             <ProtectedRoute>
               <MapView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/city-3d"
+          element={
+            <ProtectedRoute>
+              <CityView3D />
             </ProtectedRoute>
           }
         />

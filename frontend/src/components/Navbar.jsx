@@ -20,6 +20,9 @@ function Navbar() {
         <Link to="/map" className="cursor-pointer hover:text-blue-400">
           Map
         </Link>
+        <Link to="/city-3d" className="cursor-pointer hover:text-blue-400">
+          3D View
+        </Link>
         <Link to="/reports" className="cursor-pointer hover:text-blue-400">
           Reports
         </Link>
