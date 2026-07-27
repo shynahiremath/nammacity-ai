@@ -161,21 +161,51 @@ function PredictionPanel({ zones }) {
       {error && <p className="text-red-600 mt-4">{error}</p>}
 
       {prediction && (
-        <div className="mt-4 p-4 rounded bg-gray-50 flex items-center gap-4">
-          <span
-            className="w-4 h-4 rounded-full inline-block"
-            style={{ backgroundColor: colorMap[prediction.predicted_level] }}
-          ></span>
-          <div>
-            <p className="font-semibold capitalize">
-              {prediction.predicted_level} congestion expected
-            </p>
-            <p className="text-sm text-gray-500">
-              Confidence: {(prediction.confidence * 100).toFixed(0)}%
-            </p>
-          </div>
-        </div>
-      )}
+  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="p-4 rounded bg-gray-50 flex items-center gap-3">
+      <span
+        className="w-4 h-4 rounded-full inline-block flex-shrink-0"
+        style={{ backgroundColor: colorMap[prediction.congestion.level] }}
+      ></span>
+      <div>
+        <p className="text-xs text-gray-500">Congestion</p>
+        <p className="font-semibold capitalize">{prediction.congestion.level}</p>
+        <p className="text-xs text-gray-400">
+          {(prediction.congestion.confidence * 100).toFixed(0)}% confidence
+        </p>
+      </div>
+    </div>
+
+    <div className="p-4 rounded bg-gray-50 flex items-center gap-3">
+      <span
+        className="w-4 h-4 rounded-full inline-block flex-shrink-0"
+        style={{ backgroundColor: colorMap[prediction.pollution.level] }}
+      ></span>
+      <div>
+        <p className="text-xs text-gray-500">Pollution</p>
+        <p className="font-semibold capitalize">{prediction.pollution.level}</p>
+        <p className="text-xs text-gray-400">
+          {(prediction.pollution.confidence * 100).toFixed(0)}% confidence
+        </p>
+      </div>
+    </div>
+
+    <div className="p-4 rounded bg-gray-50 flex items-center gap-3">
+      <span
+        className="w-4 h-4 rounded-full inline-block flex-shrink-0"
+        style={{ backgroundColor: colorMap[prediction.infrastructure_stress.level] }}
+      ></span>
+      <div>
+        <p className="text-xs text-gray-500">Infrastructure Stress</p>
+        <p className="font-semibold capitalize">{prediction.infrastructure_stress.level}</p>
+        <p className="text-xs text-gray-400">
+          {(prediction.infrastructure_stress.confidence * 100).toFixed(0)}% confidence
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+      
     </div>
   )
 }
