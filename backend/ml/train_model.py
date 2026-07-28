@@ -10,7 +10,13 @@ df = pd.read_csv("traffic_data.csv")
 zone_encoder = LabelEncoder()
 df["zone_encoded"] = zone_encoder.fit_transform(df["zone"])
 
-features = ["zone_encoded", "day_of_week", "hour", "is_weekday", "is_rush_hour"]
+weather_encoder = LabelEncoder()
+df["weather_encoded"] = weather_encoder.fit_transform(df["weather"])
+
+features = [
+    "zone_encoded", "day_of_week", "hour", "is_weekday",
+    "is_rush_hour", "weather_encoded", "is_event",
+]
 
 def train_and_save(target_column, model_filename, label):
     print(f"\n{'='*50}")
@@ -33,6 +39,10 @@ def train_and_save(target_column, model_filename, label):
     print(f"Accuracy: {accuracy:.2%}")
     print(classification_report(y_test, y_pred))
 
+    # feature importance - we'll need this for "cause explanation" in Step 67
+    importances = dict(zip(features, model.feature_importances_))
+    print("Feature importances:", {k: round(v, 3) for k, v in importances.items()})
+
     joblib.dump(model, model_filename)
     print(f"Saved as {model_filename}")
 
@@ -41,4 +51,5 @@ train_and_save("pollution_level", "pollution_model.pkl", "Pollution")
 train_and_save("infra_level", "infra_model.pkl", "Infrastructure Stress")
 
 joblib.dump(zone_encoder, "zone_encoder.pkl")
+joblib.dump(weather_encoder, "weather_encoder.pkl")
 print("\nAll models trained and saved successfully!")

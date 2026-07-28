@@ -4,6 +4,7 @@ from database import database
 from models import UserSignup, UserLogin, TrafficZone
 from auth import hash_password, verify_password, create_access_token
 from ml_predictor import predict_all
+from recommendations import get_recommendations
 
 app = FastAPI()
 
@@ -88,9 +89,23 @@ async def create_traffic_zone(zone: TrafficZone):
     return {"message": "Zone created", "id": str(result.inserted_id)}
 
 @app.get("/predict")
-async def predict(zone: str, day_of_week: int, hour: int):
+async def predict(
+    zone: str,
+    day_of_week: int,
+    hour: int,
+    weather: str = "clear",
+    is_event: bool = False,
+):
     try:
-        result = predict_all(zone, day_of_week, hour)
+        result = predict_all(zone, day_of_week, hour, weather, is_event)
+        result["recommendations"] = get_recommendations(
+            zone=zone,
+            congestion=result["congestion"],
+            pollution=result["pollution"],
+            infra=result["infrastructure_stress"],
+            is_event=is_event,
+            weather=weather,
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

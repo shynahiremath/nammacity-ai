@@ -68,7 +68,16 @@ function PredictionPanel({ zones }) {
   const [selectedZone, setSelectedZone] = useState('')
   const [selectedDay, setSelectedDay] = useState(0)
   const [selectedHour, setSelectedHour] = useState(9)
+  const [weather, setWeather] = useState('clear')
+  const [isEvent, setIsEvent] = useState(false)
+
+  const [simMode, setSimMode] = useState(false)
+  const [compareHour, setCompareHour] = useState(18)
+  const [compareWeather, setCompareWeather] = useState('clear')
+  const [compareEvent, setCompareEvent] = useState(false)
+
   const [prediction, setPrediction] = useState(null)
+  const [comparePrediction, setComparePrediction] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -78,20 +87,33 @@ function PredictionPanel({ zones }) {
     }
   }, [zones, selectedZone])
 
+  async function fetchPrediction(hour, weatherVal, eventVal) {
+    const response = await axios.get('http://127.0.0.1:8000/predict', {
+      params: {
+        zone: selectedZone,
+        day_of_week: selectedDay,
+        hour,
+        weather: weatherVal,
+        is_event: eventVal,
+      },
+    })
+    return response.data
+  }
+
   async function handlePredict() {
     setLoading(true)
     setError('')
     setPrediction(null)
+    setComparePrediction(null)
 
     try {
-      const response = await axios.get('http://127.0.0.1:8000/predict', {
-        params: {
-          zone: selectedZone,
-          day_of_week: selectedDay,
-          hour: selectedHour,
-        },
-      })
-      setPrediction(response.data)
+      const result = await fetchPrediction(selectedHour, weather, isEvent)
+      setPrediction(result)
+
+      if (simMode) {
+        const compareResult = await fetchPrediction(compareHour, compareWeather, compareEvent)
+        setComparePrediction(compareResult)
+      }
     } catch (err) {
       setError('Could not get prediction. Please try again.')
     } finally {
@@ -99,9 +121,42 @@ function PredictionPanel({ zones }) {
     }
   }
 
+  function ResultCards({ data }) {
+    if (!data) return null
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {['congestion', 'pollution', 'infrastructure_stress'].map((key) => {
+          const label = key === 'infrastructure_stress' ? 'Infra Stress' : key[0].toUpperCase() + key.slice(1)
+          return (
+            <div key={key} className="p-3 rounded bg-gray-50 flex items-center gap-2">
+              <span
+                className="w-3 h-3 rounded-full inline-block flex-shrink-0"
+                style={{ backgroundColor: colorMap[data[key].level] }}
+              ></span>
+              <div>
+                <p className="text-xs text-gray-500">{label}</p>
+                <p className="font-semibold capitalize text-sm">{data[key].level}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <h3 className="text-lg font-semibold mb-4">AI Congestion Predictor</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">AI Congestion Predictor</h3>
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={simMode}
+            onChange={(e) => setSimMode(e.target.checked)}
+          />
+          What-if comparison mode
+        </label>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         <div>
@@ -112,13 +167,10 @@ function PredictionPanel({ zones }) {
             className="w-full border border-gray-300 rounded px-3 py-2"
           >
             {zones.map((zone) => (
-              <option key={zone.id} value={zone.name}>
-                {zone.name}
-              </option>
+              <option key={zone.id} value={zone.name}>{zone.name}</option>
             ))}
           </select>
         </div>
-
         <div>
           <label className="block text-sm font-medium mb-1">Day</label>
           <select
@@ -127,85 +179,128 @@ function PredictionPanel({ zones }) {
             className="w-full border border-gray-300 rounded px-3 py-2"
           >
             {dayNames.map((day, index) => (
-              <option key={index} value={index}>
-                {day}
-              </option>
+              <option key={index} value={index}>{day}</option>
             ))}
           </select>
+        </div>
+        <div></div>
+      </div>
+
+      <div className={`grid grid-cols-1 ${simMode ? 'sm:grid-cols-2' : ''} gap-6`}>
+        <div className={simMode ? 'border-r border-gray-200 pr-6' : ''}>
+          {simMode && <p className="text-xs font-semibold text-gray-500 mb-2">SCENARIO A</p>}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block text-xs font-medium mb-1">Hour</label>
+              <select
+                value={selectedHour}
+                onChange={(e) => setSelectedHour(Number(e.target.value))}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{i}:00</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">Weather</label>
+              <select
+                value={weather}
+                onChange={(e) => setWeather(e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              >
+                <option value="clear">Clear</option>
+                <option value="rain">Rain</option>
+                <option value="heavy_rain">Heavy Rain</option>
+              </select>
+            </div>
+            <div className="flex items-end pb-1.5">
+              <label className="flex items-center gap-1.5 text-xs">
+                <input type="checkbox" checked={isEvent} onChange={(e) => setIsEvent(e.target.checked)} />
+                Event
+              </label>
+            </div>
+          </div>
+          {prediction && <ResultCards data={prediction} />}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Hour (24h)</label>
-          <select
-            value={selectedHour}
-            onChange={(e) => setSelectedHour(Number(e.target.value))}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-          >
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>
-                {i}:00
-              </option>
-            ))}
-          </select>
-        </div>
+        {simMode && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">SCENARIO B</p>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium mb-1">Hour</label>
+                <select
+                  value={compareHour}
+                  onChange={(e) => setCompareHour(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{i}:00</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Weather</label>
+                <select
+                  value={compareWeather}
+                  onChange={(e) => setCompareWeather(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                >
+                  <option value="clear">Clear</option>
+                  <option value="rain">Rain</option>
+                  <option value="heavy_rain">Heavy Rain</option>
+                </select>
+              </div>
+              <div className="flex items-end pb-1.5">
+                <label className="flex items-center gap-1.5 text-xs">
+                  <input type="checkbox" checked={compareEvent} onChange={(e) => setCompareEvent(e.target.checked)} />
+                  Event
+                </label>
+              </div>
+            </div>
+            {comparePrediction && <ResultCards data={comparePrediction} />}
+          </div>
+        )}
       </div>
 
       <button
         onClick={handlePredict}
         disabled={loading || !selectedZone}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition disabled:opacity-50"
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition disabled:opacity-50 mt-4"
       >
-        {loading ? 'Predicting...' : 'Predict Congestion'}
+        {loading ? 'Predicting...' : simMode ? 'Compare Scenarios' : 'Predict Congestion'}
       </button>
 
       {error && <p className="text-red-600 mt-4">{error}</p>}
 
-      {prediction && (
-  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-    <div className="p-4 rounded bg-gray-50 flex items-center gap-3">
-      <span
-        className="w-4 h-4 rounded-full inline-block flex-shrink-0"
-        style={{ backgroundColor: colorMap[prediction.congestion.level] }}
-      ></span>
-      <div>
-        <p className="text-xs text-gray-500">Congestion</p>
-        <p className="font-semibold capitalize">{prediction.congestion.level}</p>
-        <p className="text-xs text-gray-400">
-          {(prediction.congestion.confidence * 100).toFixed(0)}% confidence
-        </p>
-      </div>
-    </div>
-
-    <div className="p-4 rounded bg-gray-50 flex items-center gap-3">
-      <span
-        className="w-4 h-4 rounded-full inline-block flex-shrink-0"
-        style={{ backgroundColor: colorMap[prediction.pollution.level] }}
-      ></span>
-      <div>
-        <p className="text-xs text-gray-500">Pollution</p>
-        <p className="font-semibold capitalize">{prediction.pollution.level}</p>
-        <p className="text-xs text-gray-400">
-          {(prediction.pollution.confidence * 100).toFixed(0)}% confidence
-        </p>
-      </div>
-    </div>
-
-    <div className="p-4 rounded bg-gray-50 flex items-center gap-3">
-      <span
-        className="w-4 h-4 rounded-full inline-block flex-shrink-0"
-        style={{ backgroundColor: colorMap[prediction.infrastructure_stress.level] }}
-      ></span>
-      <div>
-        <p className="text-xs text-gray-500">Infrastructure Stress</p>
-        <p className="font-semibold capitalize">{prediction.infrastructure_stress.level}</p>
-        <p className="text-xs text-gray-400">
-          {(prediction.infrastructure_stress.confidence * 100).toFixed(0)}% confidence
-        </p>
-      </div>
-    </div>
-  </div>
-)}
-      
+      {prediction && prediction.recommendations && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-sm font-semibold text-gray-700 mb-2">
+            Recommended Actions {simMode ? '(Scenario A)' : ''}
+          </p>
+          <div className="space-y-2">
+            {prediction.recommendations.map((rec, i) => (
+              <div key={i} className="text-sm p-2 rounded bg-gray-50 flex gap-2">
+                <span
+                  className={`text-xs font-semibold px-2 py-0.5 rounded flex-shrink-0 h-fit ${
+                    rec.priority === 'critical' ? 'bg-red-100 text-red-700' :
+                    rec.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                    rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {rec.priority}
+                </span>
+                <div>
+                  <p className="font-medium">{rec.action}</p>
+                  <p className="text-gray-500 text-xs">{rec.reason}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
