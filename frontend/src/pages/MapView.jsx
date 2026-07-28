@@ -274,6 +274,27 @@ function PredictionPanel({ zones }) {
 
       {error && <p className="text-red-600 mt-4">{error}</p>}
 
+      {prediction && prediction.insight && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2 mb-2">
+            <p className="text-sm font-semibold text-gray-700">AI Analysis Summary</p>
+            <span
+              className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                prediction.insight.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                prediction.insight.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                prediction.insight.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-green-100 text-green-700'
+              }`}
+            >
+              {prediction.insight.severity}
+            </span>
+          </div>
+          <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded">
+            {prediction.insight.summary}
+          </p>
+        </div>
+      )}
+
       {prediction && prediction.recommendations && (
         <div className="mt-4 pt-4 border-t border-gray-100">
           <p className="text-sm font-semibold text-gray-700 mb-2">

@@ -5,6 +5,7 @@ from models import UserSignup, UserLogin, TrafficZone
 from auth import hash_password, verify_password, create_access_token
 from ml_predictor import predict_all
 from recommendations import get_recommendations
+from insights import generate_summary
 
 app = FastAPI()
 
@@ -105,6 +106,15 @@ async def predict(
             infra=result["infrastructure_stress"],
             is_event=is_event,
             weather=weather,
+        )
+        result["insight"] = generate_summary(
+            zone=zone,
+            congestion=result["congestion"],
+            pollution=result["pollution"],
+            infra=result["infrastructure_stress"],
+            weather=weather,
+            is_event=is_event,
+            recommendations=result["recommendations"],
         )
         return result
     except Exception as e:
