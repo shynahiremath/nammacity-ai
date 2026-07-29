@@ -1,3 +1,5 @@
+import asyncio
+from scheduler import start_scheduler
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import database
@@ -94,10 +96,14 @@ async def predict(
     zone: str,
     day_of_week: int,
     hour: int,
-    weather: str = "clear",
+    weather: str = None,
     is_event: bool = False,
 ):
     try:
+        if weather is None:
+            zone_doc = await database.traffic_zones.find_one({"name": zone})
+            weather = zone_doc.get("live_weather", "clear") if zone_doc else "clear"
+
         result = predict_all(zone, day_of_week, hour, weather, is_event)
         result["recommendations"] = get_recommendations(
             zone=zone,
@@ -119,3 +125,7 @@ async def predict(
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.on_event("startup")
+async def on_startup():
+    asyncio.create_task(start_scheduler())
